@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Game Engine WebGL - Museum Modern</title>
+        <link rel="stylesheet" href="./style.css" />
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <div id="ui-layer">
+            <div id="controls-hint">
+                ⌨️ W,A,S,D: Bergerak | 🖱️ Mouse: Melihat
+            </div>
+            <div id="crosshair"></div>
+            <div id="info-panel">
+                <div class="tag">Informasi Objek</div>
+                <h2 id="info-title">Nama Objek</h2>
+                <p id="info-desc">Deskripsi singkat.</p>
+            </div>
+        </div>
+        <div id="blocker">
+            <div id="instructions">
+                <h1>Museum Galeri Modern</h1>
+                <p>Klik di mana saja untuk memulai tur</p>
+            </div>
+        </div>
+        <!-- Entry point utama dengan ES Module -->
+        <script type="module" src="./src/main.js"></script>
+    </body>
+</html>
