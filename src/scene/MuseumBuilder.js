@@ -86,7 +86,7 @@ export default class MuseumBuilder {
                 mat,
             );
             carpet.rotation.x = -Math.PI / 2;
-            carpet.position.set(c.x, 0.02, c.z); // Slightly above floor
+            carpet.position.set(c.x, c.y ?? 0.02, c.z); // Slightly above floor
             carpet.receiveShadow = true;
             this.scene.add(carpet);
         });
@@ -178,6 +178,13 @@ export default class MuseumBuilder {
             this.scene.add(this.factory.createSignage(data)),
         );
 
+        // ===== DOORS =====
+        MuseumConfig.doors.forEach((data) => {
+            const door = this.factory.createDoor(data);
+            this.scene.add(door);
+            this.interactables.push(...door.children);
+        });
+
         // ===== PAINTINGS =====
         MuseumConfig.paintings.forEach((data) => {
             const p = this.factory.createPainting(data);
@@ -197,8 +204,6 @@ export default class MuseumBuilder {
                 { mount: "wall" },
             );
         });
-
-        const artifactRoof = this.buildArtifactLightingRoof();
 
         // ===== LOBBY ARTIFACT =====
         MuseumConfig.lobbyArtifacts.forEach((data) => {
@@ -230,13 +235,13 @@ export default class MuseumBuilder {
             LightingBuilder.addSpotlight(
                 this.scene,
                 data.x,
-                artifactRoof.lightY,
+                10,
                 data.z,
                 data.x,
                 3.35,
                 data.z,
                 MuseumConfig,
-                { mount: "roof", roofY: artifactRoof.undersideY },
+                { mount: "ceiling" },
             );
         });
 
@@ -284,85 +289,11 @@ export default class MuseumBuilder {
 
         // ===== RECEPTION =====
         const recData = MuseumConfig.reception;
-        const rec = this.factory.createReception(recData);
-        this.scene.add(rec.mesh);
-        this.col.addBox(recData.x, recData.z, rec.w, rec.d);
+        if (recData) {
+            const rec = this.factory.createReception(recData);
+            this.scene.add(rec.mesh);
+            this.col.addBox(recData.x, recData.z, rec.w, rec.d);
+        }
     }
 
-    buildArtifactLightingRoof() {
-        const vitrines = MuseumConfig.vitrines;
-        const margin = 4;
-        const minX = Math.min(...vitrines.map((v) => v.x)) - margin;
-        const maxX = Math.max(...vitrines.map((v) => v.x)) + margin;
-        const minZ = Math.min(...vitrines.map((v) => v.z)) - margin;
-        const maxZ = Math.max(...vitrines.map((v) => v.z)) + margin;
-        const centerX = (minX + maxX) / 2;
-        const centerZ = (minZ + maxZ) / 2;
-        const width = maxX - minX;
-        const depth = maxZ - minZ;
-        const roofY = 9.9;
-        const thickness = 0.35;
-        const group = new THREE.Group();
-
-        const canopy = new THREE.Mesh(
-            new THREE.BoxGeometry(width, thickness, depth),
-            this.mats.wallTrim,
-        );
-        canopy.position.y = roofY;
-        canopy.castShadow = canopy.receiveShadow = true;
-
-        const beamMat = this.mats.metalDark;
-        const beamHeight = 0.18;
-        const beamThickness = 0.18;
-        const frontBeam = new THREE.Mesh(
-            new THREE.BoxGeometry(width + beamThickness, beamHeight, beamThickness),
-            beamMat,
-        );
-        const backBeam = frontBeam.clone();
-        const leftBeam = new THREE.Mesh(
-            new THREE.BoxGeometry(beamThickness, beamHeight, depth + beamThickness),
-            beamMat,
-        );
-        const rightBeam = leftBeam.clone();
-
-        frontBeam.position.set(0, roofY - thickness / 2 - beamHeight / 2, depth / 2);
-        backBeam.position.set(0, roofY - thickness / 2 - beamHeight / 2, -depth / 2);
-        leftBeam.position.set(-width / 2, roofY - thickness / 2 - beamHeight / 2, 0);
-        rightBeam.position.set(width / 2, roofY - thickness / 2 - beamHeight / 2, 0);
-        [frontBeam, backBeam, leftBeam, rightBeam].forEach((beam) => {
-            beam.castShadow = beam.receiveShadow = true;
-        });
-
-        const rodHeight = MuseumConfig.layout.height - (roofY + thickness / 2);
-        const rodY = roofY + thickness / 2 + rodHeight / 2;
-        const rodGeo = new THREE.CylinderGeometry(0.05, 0.05, rodHeight, 12);
-        const plateGeo = new THREE.BoxGeometry(0.45, 0.05, 0.45);
-        const cornerInset = 0.6;
-        const corners = [
-            [-width / 2 + cornerInset, -depth / 2 + cornerInset],
-            [width / 2 - cornerInset, -depth / 2 + cornerInset],
-            [-width / 2 + cornerInset, depth / 2 - cornerInset],
-            [width / 2 - cornerInset, depth / 2 - cornerInset],
-        ];
-
-        corners.forEach(([x, z]) => {
-            const rod = new THREE.Mesh(rodGeo, beamMat);
-            rod.position.set(x, rodY, z);
-            rod.castShadow = rod.receiveShadow = true;
-
-            const plate = new THREE.Mesh(plateGeo, beamMat);
-            plate.position.set(x, MuseumConfig.layout.height - 0.03, z);
-            plate.castShadow = plate.receiveShadow = true;
-            group.add(rod, plate);
-        });
-
-        group.add(canopy, frontBeam, backBeam, leftBeam, rightBeam);
-        group.position.set(centerX, 0, centerZ);
-        this.scene.add(group);
-
-        return {
-            lightY: roofY - thickness / 2 - 0.42,
-            undersideY: roofY - thickness / 2 - 0.04,
-        };
-    }
 }

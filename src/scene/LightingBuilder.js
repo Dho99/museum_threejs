@@ -11,6 +11,12 @@ export default class LightingBuilder {
 
     static roofPlateGeometry = new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16);
 
+    static ceilingLightBodyGeometry = new THREE.CylinderGeometry(0.52, 0.62, 0.12, 32);
+
+    static ceilingLightDiffuserGeometry = new THREE.CylinderGeometry(0.44, 0.44, 0.035, 32);
+
+    static ceilingLightTrimGeometry = new THREE.TorusGeometry(0.54, 0.045, 10, 32);
+
     static fixtureMaterial = new THREE.MeshStandardMaterial({
         color: 0x2c2a24,
         metalness: 0.45,
@@ -23,6 +29,14 @@ export default class LightingBuilder {
         color: 0x24211d,
         metalness: 0.55,
         roughness: 0.32,
+    });
+
+    static ceilingDiffuserMaterial = new THREE.MeshStandardMaterial({
+        color: 0xfff2d0,
+        emissive: 0xffe3a2,
+        emissiveIntensity: 1.75,
+        roughness: 0.18,
+        metalness: 0.02,
     });
 
     /**
@@ -58,6 +72,68 @@ export default class LightingBuilder {
 
         // 3. Ambient Light - pencahayaan global subtle
         scene.add(new THREE.AmbientLight(0xfff1dd, lightCfg.ambientLightIntensity));
+
+        LightingBuilder.addCeilingLightGrid(scene, config);
+    }
+
+    static addCeilingLightGrid(scene, config) {
+        const lay = config.layout;
+        const lightCfg = config.lighting;
+        const bodyY = lay.height - 0.075;
+        const diffuserY = lay.height - 0.145;
+        const cols = 4;
+        const rows = 4;
+        const startX = -lay.width / 2 + 12;
+        const endX = lay.width / 2 - 12;
+        const startZ = -lay.depth / 2 + 9;
+        const endZ = lay.depth / 2 - 9;
+        const group = new THREE.Group();
+
+        for (let ix = 0; ix < cols; ix++) {
+            const x = THREE.MathUtils.lerp(startX, endX, ix / (cols - 1));
+
+            for (let iz = 0; iz < rows; iz++) {
+                const z = THREE.MathUtils.lerp(startZ, endZ, iz / (rows - 1));
+                const body = new THREE.Mesh(
+                    LightingBuilder.ceilingLightBodyGeometry,
+                    LightingBuilder.mountMaterial,
+                );
+                body.position.set(x, bodyY, z);
+                body.castShadow = body.receiveShadow = true;
+
+                const trim = new THREE.Mesh(
+                    LightingBuilder.ceilingLightTrimGeometry,
+                    LightingBuilder.mountMaterial,
+                );
+                trim.rotation.x = Math.PI / 2;
+                trim.position.set(x, diffuserY - 0.006, z);
+                trim.castShadow = trim.receiveShadow = true;
+
+                const diffuser = new THREE.Mesh(
+                    LightingBuilder.ceilingLightDiffuserGeometry,
+                    LightingBuilder.ceilingDiffuserMaterial.clone(),
+                );
+                diffuser.position.set(x, diffuserY, z);
+                diffuser.userData.isGalleryFixture = true;
+                diffuser.userData.onEmissiveIntensity = diffuser.material.emissiveIntensity;
+
+                group.add(body, trim, diffuser);
+
+                const point = new THREE.PointLight(
+                    0xffefd0,
+                    lightCfg.ceilingPointLightIntensity,
+                    lightCfg.ceilingPointLightDistance,
+                    lightCfg.ceilingPointLightDecay,
+                );
+                point.position.set(x, lay.height - 0.55, z);
+                point.castShadow = false;
+                point.userData.isGalleryLight = true;
+                point.userData.onIntensity = lightCfg.ceilingPointLightIntensity;
+                group.add(point);
+            }
+        }
+
+        scene.add(group);
     }
 
     /**

@@ -45,6 +45,7 @@ export default class ObjectFactory {
             plantLeaf: new THREE.SphereGeometry(0.4, 8, 8),
             signage: new THREE.PlaneGeometry(6, 1.5),
             signageGlow: new THREE.PlaneGeometry(6.8, 2.1),
+            doorHandle: new THREE.SphereGeometry(0.12, 16, 10),
             receptionBase: new THREE.BoxGeometry(6, 1.2, 2),
             receptionTop: new THREE.BoxGeometry(6.2, 0.1, 2.2),
         };
@@ -665,6 +666,103 @@ export default class ObjectFactory {
         group.add(glow, board, light);
         group.position.set(data.x, data.y, data.z);
         group.rotation.y = data.rot;
+        return group;
+    }
+
+    createDoor(data) {
+        const group = new THREE.Group();
+        const width = data.w ?? 4.4;
+        const height = data.h ?? 7;
+        const depth = 0.16;
+        const frameWidth = 0.34;
+        const frameDepth = 0.24;
+        const doorMat = this.mats.wall.clone();
+        const trimMat = this.mats.wallTrim;
+        const shadowMat = this.mats.metalDark;
+
+        const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(width, height, depth),
+            doorMat,
+        );
+        panel.position.y = height / 2;
+        panel.castShadow = panel.receiveShadow = true;
+
+        const sideFrameGeo = new THREE.BoxGeometry(frameWidth, height + frameWidth, frameDepth);
+        const topFrameGeo = new THREE.BoxGeometry(width + frameWidth * 2, frameWidth, frameDepth);
+
+        const leftFrame = new THREE.Mesh(sideFrameGeo, trimMat);
+        leftFrame.position.set(-width / 2 - frameWidth / 2, height / 2, 0.03);
+
+        const rightFrame = new THREE.Mesh(sideFrameGeo, trimMat);
+        rightFrame.position.set(width / 2 + frameWidth / 2, height / 2, 0.03);
+
+        const topFrame = new THREE.Mesh(topFrameGeo, trimMat);
+        topFrame.position.set(0, height + frameWidth / 2, 0.03);
+
+        const threshold = new THREE.Mesh(
+            new THREE.BoxGeometry(width + frameWidth * 2, 0.14, 0.42),
+            shadowMat,
+        );
+        threshold.position.set(0, 0.07, 0.14);
+
+        const insetMat = trimMat;
+        const insetGeo = new THREE.BoxGeometry((width - 1.25) / 2, height - 2.25, 0.055);
+        const leftInset = new THREE.Mesh(insetGeo, insetMat);
+        leftInset.position.set(-width * 0.235, height / 2 - 0.05, 0.11);
+
+        const rightInset = new THREE.Mesh(insetGeo, insetMat);
+        rightInset.position.set(width * 0.235, height / 2 - 0.05, 0.11);
+
+        const centerSplit = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, height - 0.55, 0.08),
+            shadowMat,
+        );
+        centerSplit.position.set(0, height / 2, 0.14);
+
+        const header = new THREE.Mesh(
+            new THREE.BoxGeometry(width - 0.75, 0.5, 0.09),
+            trimMat,
+        );
+        header.position.set(0, height - 0.85, 0.14);
+
+        const handleLeft = new THREE.Mesh(this.geometries.doorHandle, this.mats.metalGold);
+        handleLeft.position.set(-0.22, height / 2, 0.24);
+
+        const handleRight = new THREE.Mesh(this.geometries.doorHandle, this.mats.metalGold);
+        handleRight.position.set(0.22, height / 2, 0.24);
+
+        [
+            leftFrame,
+            rightFrame,
+            topFrame,
+            threshold,
+            leftInset,
+            rightInset,
+            centerSplit,
+            header,
+            handleLeft,
+            handleRight,
+        ].forEach((mesh) => {
+            mesh.castShadow = mesh.receiveShadow = true;
+        });
+
+        group.add(
+            panel,
+            leftFrame,
+            rightFrame,
+            topFrame,
+            threshold,
+            leftInset,
+            rightInset,
+            centerSplit,
+            header,
+            handleLeft,
+            handleRight,
+        );
+        group.position.set(data.x, data.y ?? 0, data.z);
+        group.rotation.y = data.rot ?? 0;
+
+        this.makeInteractable(group, data.title, data.desc);
         return group;
     }
 

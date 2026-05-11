@@ -26,9 +26,9 @@ export const MuseumConfig = {
 
   // Karpet pembatas area
   carpets: [
-    { x: 0, z: 15, w: 8, d: 20, color: "blue" }, // Hall
-    { x: -28, z: 0, w: 15, d: 40, color: "red" }, // Galeri A
-    { x: 28, z: 0, w: 15, d: 40, color: "red" }, // Galeri B
+    { x: 0, y: 0.02, z: 30, w: 8, d: 20, color: "blue" }, // Hall
+    { x: -28, y: 0.02, z: 0, w: 15, d: 40, color: "red" }, // Galeri A
+    { x: 28, y: 0.02, z: 0, w: 15, d: 40, color: "red" }, // Galeri B
   ],
 
   // Papan informasi
@@ -36,6 +36,20 @@ export const MuseumConfig = {
     { x: 0, y: 9, z: -14.4, text: "LOBBY UTAMA", rot: 0 },
     { x: -14.4, y: 8, z: 0, text: "GALERI SENI", rot: Math.PI / 2 },
     { x: 14.4, y: 8, z: 0, text: "RUANG ARTEFAK", rot: -Math.PI / 2 },
+  ],
+
+  // Pintu dekoratif yang menempel pada tembok
+  doors: [
+    {
+      x: 0,
+      y: 0,
+      z: 29.48,
+      rot: Math.PI,
+      w: 6.2,
+      h: 8.6,
+      title: "Pintu Lobby Utama",
+      desc: "Pintu besar yang menempel pada tembok depan lobby.",
+    },
   ],
 
   // Koleksi lukisan di dinding
@@ -205,7 +219,6 @@ export const MuseumConfig = {
 
   // Kursi panjang untuk tempat duduk
   benches: [
-    { x: -7, z: 14, rot: 0 },
     { x: -28, z: 0, rot: Math.PI / 2 },
     { x: 28, z: 0, rot: Math.PI / 2 },
   ],
@@ -221,7 +234,7 @@ export const MuseumConfig = {
   ],
 
   // Lokasi resepsionis
-  reception: { x: 0, z: 18 },
+  reception: null,
 
   // Parameter kamera dan kontrol
   camera: {
@@ -243,13 +256,16 @@ export const MuseumConfig = {
   lighting: {
     lightsInitiallyOn: true,
     hemisphereLightIntensity: 0.12,
-    ambientLightIntensity: 0.035,
-    directionalLightIntensity: 0.12,
+    ambientLightIntensity: 0.055,
+    directionalLightIntensity: 0.16,
     spotlightIntensity: 70,
     spotlightAngle: Math.PI / 8,
     spotlightPenumbra: 0.45,
     spotlightDistance: 13,
     spotlightDecay: 1.7,
+    ceilingPointLightIntensity: 1.35,
+    ceilingPointLightDistance: 14,
+    ceilingPointLightDecay: 1.45,
     fogColor: 0x1f211f,
     fogDensity: 0.006,
   },
