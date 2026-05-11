@@ -5,6 +5,26 @@ import * as THREE from "three";
  * Menangani pembuatan dan setup semua pencahayaan dalam scene
  */
 export default class LightingBuilder {
+    static fixtureGeometry = new THREE.CylinderGeometry(0.18, 0.28, 0.22, 16);
+
+    static wallPlateGeometry = new THREE.BoxGeometry(0.48, 0.58, 0.1);
+
+    static roofPlateGeometry = new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16);
+
+    static fixtureMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2c2a24,
+        metalness: 0.45,
+        roughness: 0.35,
+        emissive: 0xffd28a,
+        emissiveIntensity: 0.45,
+    });
+
+    static mountMaterial = new THREE.MeshStandardMaterial({
+        color: 0x24211d,
+        metalness: 0.55,
+        roughness: 0.32,
+    });
+
     /**
      * Membangun sistem pencahayaan dasar museum
      */
@@ -13,8 +33,8 @@ export default class LightingBuilder {
 
         // 1. Hemisphere Light - ambience alami dari langit dan tanah
         const hemiLight = new THREE.HemisphereLight(
-            0xffffff,
-            0xe0e0e0,
+            0xd6e3ff,
+            0x1a1714,
             lightCfg.hemisphereLightIntensity,
         );
         hemiLight.position.set(0, 20, 0);
@@ -22,7 +42,7 @@ export default class LightingBuilder {
 
         // 2. Directional Light - cahaya utama (fill light)
         const dirLight = new THREE.DirectionalLight(
-            0xfffaee,
+            0xfff0d0,
             lightCfg.directionalLightIntensity,
         );
         dirLight.position.set(10, 20, 10);
@@ -37,23 +57,32 @@ export default class LightingBuilder {
         scene.add(dirLight);
 
         // 3. Ambient Light - pencahayaan global subtle
-        scene.add(
-            new THREE.AmbientLight(0xffffff, lightCfg.ambientLightIntensity),
-        );
+        scene.add(new THREE.AmbientLight(0xfff1dd, lightCfg.ambientLightIntensity));
     }
 
     /**
      * Menambah spotlight untuk menyorot objek tertentu (lukisan, artefak)
      */
-    static addSpotlight(scene, x, y, z, tx, ty, tz, config) {
+    static addSpotlight(scene, x, y, z, tx, ty, tz, config, options = {}) {
         const lightCfg = config.lighting;
 
         const spot = new THREE.SpotLight(0xfff5e6, lightCfg.spotlightIntensity);
         spot.position.set(x, y, z);
         spot.angle = lightCfg.spotlightAngle;
         spot.penumbra = lightCfg.spotlightPenumbra;
-        spot.castShadow = true;
+        spot.distance = lightCfg.spotlightDistance;
+        spot.decay = lightCfg.spotlightDecay;
+        spot.castShadow = config.renderer.enableSpotlightShadows;
         spot.shadow.bias = config.renderer.shadowBias;
+        spot.shadow.normalBias = 0.03;
+        spot.shadow.mapSize.width = 256;
+        spot.shadow.mapSize.height = 256;
+        spot.shadow.camera.near = 0.5;
+        spot.shadow.camera.far = lightCfg.spotlightDistance;
+        spot.shadow.camera.fov = THREE.MathUtils.radToDeg(lightCfg.spotlightAngle * 2);
+        spot.shadow.camera.updateProjectionMatrix();
+        spot.userData.isGalleryLight = true;
+        spot.userData.onIntensity = lightCfg.spotlightIntensity;
 
         // Target object untuk spotlight
         const target = new THREE.Object3D();
@@ -62,5 +91,134 @@ export default class LightingBuilder {
         spot.target = target;
 
         scene.add(spot);
+
+        LightingBuilder.addFixture(scene, spot.position, target.position, config, options);
+    }
+
+    static addFixture(scene, lightPosition, targetPosition, config, options) {
+        const fixture = new THREE.Mesh(
+            LightingBuilder.fixtureGeometry,
+            LightingBuilder.fixtureMaterial.clone(),
+        );
+        fixture.position.copy(lightPosition);
+        fixture.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            targetPosition.clone().sub(lightPosition).normalize(),
+        );
+        fixture.userData.isGalleryFixture = true;
+        fixture.userData.onEmissiveIntensity = fixture.material.emissiveIntensity;
+        scene.add(fixture);
+
+        if (options.mount === "wall") {
+            LightingBuilder.addWallMount(scene, lightPosition, targetPosition);
+            return;
+        }
+
+        if (options.mount === "roof") {
+            LightingBuilder.addRoofMount(scene, lightPosition, options.roofY);
+            return;
+        }
+
+        LightingBuilder.addCeilingMount(scene, lightPosition, config.layout.height);
+    }
+
+    static addWallMount(scene, lightPosition, targetPosition) {
+        const horizontal = new THREE.Vector3(
+            lightPosition.x - targetPosition.x,
+            0,
+            lightPosition.z - targetPosition.z,
+        );
+
+        if (horizontal.lengthSq() < 0.01) {
+            return;
+        }
+
+        const normal = horizontal.normalize();
+        const wallAnchor = new THREE.Vector3(
+            targetPosition.x,
+            lightPosition.y,
+            targetPosition.z,
+        );
+        const armStart = wallAnchor.clone().addScaledVector(normal, 0.08);
+        const armEnd = lightPosition.clone().addScaledVector(normal, -0.16);
+
+        const plate = new THREE.Mesh(
+            LightingBuilder.wallPlateGeometry,
+            LightingBuilder.mountMaterial,
+        );
+        plate.position.copy(wallAnchor).addScaledVector(normal, 0.055);
+        plate.lookAt(plate.position.clone().add(normal));
+        plate.castShadow = plate.receiveShadow = true;
+        scene.add(plate);
+
+        const arm = LightingBuilder.createCylinderBetween(
+            armStart,
+            armEnd,
+            0.055,
+            LightingBuilder.mountMaterial,
+        );
+        scene.add(arm);
+    }
+
+    static addRoofMount(scene, lightPosition, roofY) {
+        const anchorY = roofY ?? lightPosition.y + 0.35;
+        const anchor = new THREE.Vector3(lightPosition.x, anchorY, lightPosition.z);
+        const stemEnd = lightPosition.clone().add(new THREE.Vector3(0, 0.18, 0));
+
+        if (anchor.y > stemEnd.y + 0.04) {
+            const stem = LightingBuilder.createCylinderBetween(
+                anchor,
+                stemEnd,
+                0.045,
+                LightingBuilder.mountMaterial,
+            );
+            scene.add(stem);
+        }
+
+        const fixture = new THREE.Mesh(
+            LightingBuilder.roofPlateGeometry,
+            LightingBuilder.mountMaterial,
+        );
+        fixture.position.copy(anchor);
+        fixture.castShadow = fixture.receiveShadow = true;
+        scene.add(fixture);
+    }
+
+    static addCeilingMount(scene, lightPosition, ceilingY) {
+        const anchor = new THREE.Vector3(lightPosition.x, ceilingY - 0.04, lightPosition.z);
+        const stemEnd = lightPosition.clone().add(new THREE.Vector3(0, 0.18, 0));
+
+        if (anchor.y > stemEnd.y + 0.05) {
+            const stem = LightingBuilder.createCylinderBetween(
+                anchor,
+                stemEnd,
+                0.035,
+                LightingBuilder.mountMaterial,
+            );
+            scene.add(stem);
+        }
+
+        const plate = new THREE.Mesh(
+            LightingBuilder.roofPlateGeometry,
+            LightingBuilder.mountMaterial,
+        );
+        plate.position.copy(anchor);
+        plate.castShadow = plate.receiveShadow = true;
+        scene.add(plate);
+    }
+
+    static createCylinderBetween(start, end, radius, material) {
+        const length = start.distanceTo(end);
+        const mesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 12),
+            material,
+        );
+        mesh.position.copy(start).add(end).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            end.clone().sub(start).normalize(),
+        );
+        mesh.castShadow = mesh.receiveShadow = true;
+        return mesh;
     }
 }

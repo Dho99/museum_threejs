@@ -20,6 +20,12 @@ export default class MaterialFactory {
             roughness: 0.95,
         });
 
+        // Trim dinding - plint, rail, cornice, dan panel molding galeri
+        this.wallTrim = new THREE.MeshStandardMaterial({
+            color: 0xcfc7b9,
+            roughness: 0.9,
+        });
+
         // Wood material - kayu terang
         this.wood = new THREE.MeshStandardMaterial({
             map: ProceduralTextures.createLightWoodTexture(),
@@ -32,16 +38,14 @@ export default class MaterialFactory {
             roughness: 0.8,
         });
 
-        // Glass material - transparansi tinggi untuk vitrine
-        this.glass = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            transmission: 0.95,
-            opacity: 1,
-            metalness: 0,
-            roughness: 0.05,
-            ior: 1.5,
-            thickness: 0.2,
+        // Glass material - tampilan kaca ringan tanpa transmission/refraction pass
+        this.glass = new THREE.MeshStandardMaterial({
+            color: 0xcfe8ff,
+            opacity: 0.32,
+            metalness: 0.02,
+            roughness: 0.18,
             transparent: true,
+            depthWrite: false,
         });
 
         // Metal gold - untuk aksesoris dan frame premium

@@ -18,9 +18,14 @@ export default class Engine {
             powerPreference: "high-performance",
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(
+            Math.min(
+                window.devicePixelRatio,
+                MuseumConfig.renderer.maxPixelRatio,
+            ),
+        );
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure =
             MuseumConfig.renderer.toneMappingExposure;
@@ -75,21 +80,73 @@ export default class Engine {
             materials,
         );
         this.interactables = builder.build();
+        if (MuseumConfig.renderer.enableStaticShadows) {
+            this.renderer.shadowMap.autoUpdate = false;
+            this.renderer.shadowMap.needsUpdate = true;
+        }
 
         // ===== RAYCASTER & UI =====
         this.raycaster = new THREE.Raycaster();
         this.center = new THREE.Vector2(0, 0);
         this.hovered = null;
+        this.raycastTimer = 0;
+        this.raycastInterval = MuseumConfig.renderer.raycastInterval;
 
         this.uiPanel = document.getElementById("info-panel");
         this.uiTitle = document.getElementById("info-title");
         this.uiDesc = document.getElementById("info-desc");
+        this.lightingToggle = document.getElementById("lighting-toggle");
+        this.lightsOn = MuseumConfig.lighting.lightsInitiallyOn;
+        this.syncLightingState();
 
         // ===== EVENT LISTENERS =====
         window.addEventListener("resize", () => this.onResize(), false);
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "KeyL" && !e.repeat) {
+                this.toggleGalleryLights();
+            }
+        });
+        if (this.lightingToggle) {
+            this.lightingToggle.addEventListener("click", () =>
+                this.toggleGalleryLights(),
+            );
+        }
 
         // ===== START ANIMATION LOOP =====
         this.loop();
+    }
+
+    /**
+     * Toggle lampu galeri tanpa mengubah ambience dasar.
+     */
+    toggleGalleryLights() {
+        this.lightsOn = !this.lightsOn;
+        this.syncLightingState();
+    }
+
+    /**
+     * Sinkronkan spotlight dan indikator fixture dengan state UI.
+     */
+    syncLightingState() {
+        this.scene.traverse((obj) => {
+            if (obj.isLight && obj.userData.isGalleryLight) {
+                obj.intensity = this.lightsOn ? obj.userData.onIntensity : 0;
+            }
+
+            if (obj.userData.isGalleryFixture && obj.material) {
+                obj.material.emissiveIntensity = this.lightsOn
+                    ? obj.userData.onEmissiveIntensity
+                    : 0.03;
+            }
+        });
+
+        if (this.lightingToggle) {
+            this.lightingToggle.classList.toggle("is-off", !this.lightsOn);
+            this.lightingToggle.setAttribute("aria-pressed", String(this.lightsOn));
+            this.lightingToggle.textContent = this.lightsOn
+                ? "Lampu ON"
+                : "Lampu OFF";
+        }
     }
 
     /**
@@ -99,6 +156,12 @@ export default class Engine {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(
+            Math.min(
+                window.devicePixelRatio,
+                MuseumConfig.renderer.maxPixelRatio,
+            ),
+        );
     }
 
     /**
@@ -115,7 +178,7 @@ export default class Engine {
         this.raycaster.setFromCamera(this.center, this.camera);
         const intersects = this.raycaster.intersectObjects(
             this.interactables,
-            false,
+            true,
         );
 
         if (intersects.length > 0 && intersects[0].distance < 8) {
@@ -163,8 +226,13 @@ export default class Engine {
         // Update kontrol kamera
         this.camControl.update(dt);
 
-        // Handle raycasting untuk UI interaksi
-        this.handleRaycast();
+        // Handle raycasting untuk UI interaksi pada interval kecil agar frame
+        // kamera tidak membayar biaya raycast setiap render.
+        this.raycastTimer += dt;
+        if (this.raycastTimer >= this.raycastInterval) {
+            this.raycastTimer = 0;
+            this.handleRaycast();
+        }
 
         // Render scene
         this.renderer.render(this.scene, this.camera);

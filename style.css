@@ -120,3 +120,31 @@ body {
     padding: 8px 12px;
     border-radius: 6px;
 }
+
+#lighting-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    pointer-events: auto;
+    cursor: pointer;
+    border: 1px solid rgba(45, 38, 27, 0.22);
+    border-radius: 999px;
+    background: rgba(255, 246, 224, 0.92);
+    color: #3a2b17;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 8px 14px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(8px);
+}
+
+#lighting-toggle:hover {
+    background: rgba(255, 236, 190, 0.98);
+}
+
+#lighting-toggle.is-off {
+    background: rgba(33, 36, 39, 0.86);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f1f1ed;
+}

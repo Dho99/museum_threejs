@@ -18,6 +18,14 @@ export default class CameraController {
 
         // Setup rotation order untuk kamera
         this.camera.rotation.order = "YXZ";
+
+        // Reuse objek matematika ini supaya gerak kamera tidak membuat alokasi
+        // baru terus-menerus saat frame sedang padat.
+        this.mouseDelta = { x: 0, y: 0 };
+        this.euler = new THREE.Euler(0, 0, 0, "YXZ");
+        this.forward = new THREE.Vector3();
+        this.right = new THREE.Vector3();
+        this.moveVec = new THREE.Vector3();
     }
 
     /**
@@ -38,7 +46,7 @@ export default class CameraController {
      * Handle mouse look around
      */
     handleMouseLook() {
-        const md = this.input.getMouseDelta();
+        const md = this.input.getMouseDelta(this.mouseDelta);
 
         // Update rotasi kamera berdasarkan mouse movement
         this.camera.rotation.y -= md.x * this.mouseSensitivity;
@@ -56,32 +64,30 @@ export default class CameraController {
      */
     handleMovement(dt) {
         // Hitung arah forward dan right berdasarkan rotasi kamera
-        const euler = new THREE.Euler(0, this.camera.rotation.y, 0, "YXZ");
-        const forward = new THREE.Vector3(0, 0, -1)
-            .applyEuler(euler)
-            .normalize();
-        const right = new THREE.Vector3(1, 0, 0).applyEuler(euler).normalize();
+        this.euler.set(0, this.camera.rotation.y, 0, "YXZ");
+        this.forward.set(0, 0, -1).applyEuler(this.euler).normalize();
+        this.right.set(1, 0, 0).applyEuler(this.euler).normalize();
 
         // Build movement vector
-        const moveVec = new THREE.Vector3();
+        this.moveVec.set(0, 0, 0);
 
-        if (this.input.isKeyDown("KeyW")) moveVec.add(forward);
-        if (this.input.isKeyDown("KeyS")) moveVec.sub(forward);
-        if (this.input.isKeyDown("KeyA")) moveVec.sub(right);
-        if (this.input.isKeyDown("KeyD")) moveVec.add(right);
+        if (this.input.isKeyDown("KeyW")) this.moveVec.add(this.forward);
+        if (this.input.isKeyDown("KeyS")) this.moveVec.sub(this.forward);
+        if (this.input.isKeyDown("KeyA")) this.moveVec.sub(this.right);
+        if (this.input.isKeyDown("KeyD")) this.moveVec.add(this.right);
 
         // Apply speed dan delta time
-        if (moveVec.lengthSq() > 0)
-            moveVec.normalize().multiplyScalar(this.speed * dt);
+        if (this.moveVec.lengthSq() > 0)
+            this.moveVec.normalize().multiplyScalar(this.speed * dt);
 
         // Hitung posisi berikutnya
         let nextX = Math.max(
             -38,
-            Math.min(38, this.camera.position.x + moveVec.x),
+            Math.min(38, this.camera.position.x + this.moveVec.x),
         );
         let nextZ = Math.max(
             -28,
-            Math.min(28, this.camera.position.z + moveVec.z),
+            Math.min(28, this.camera.position.z + this.moveVec.z),
         );
 
         // Cek collision sebelum update posisi

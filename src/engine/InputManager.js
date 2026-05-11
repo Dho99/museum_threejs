@@ -53,10 +53,11 @@ export default class InputManager {
     /**
      * Dapatkan delta mouse movement dan reset
      */
-    getMouseDelta() {
-        const d = { x: this.mouseDelta.x, y: this.mouseDelta.y };
+    getMouseDelta(target = { x: 0, y: 0 }) {
+        target.x = this.mouseDelta.x;
+        target.y = this.mouseDelta.y;
         this.mouseDelta.x = 0;
         this.mouseDelta.y = 0;
-        return d;
+        return target;
     }
 }
